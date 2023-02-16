@@ -4,10 +4,23 @@ const { ApolloServer } = require(`apollo-server`)
 
 // ここでスキーマの定義
 const typeDefs = `
+    enum PhotoCategory {
+        SELFIE
+        PORTRAIT
+        ACION
+        LANDSCAPE
+        CRAPHIC
+    }
     type Photo {
         id: ID!
         url: String!
         name: String!
+        description: String
+        category: PhotoCategory!
+    }
+    input PostPhotoInput {
+        name: String!
+        category: PhotoCategory=PORTRAIT
         description: String
     }
     type Query {
@@ -15,7 +28,7 @@ const typeDefs = `
         allPhotos: [Photo!]!
     }
     type Mutation {
-        postPhoto(name: String! description: String):Photo!
+        postPhoto(input: PostPhotoInput!):Photo!
     }
 `
 var _id = 0
@@ -36,7 +49,7 @@ const resolvers = {
             // 新しい写真を作成し、idを生成する
             var newPhoto = {
                 id: _id++,
-                ...args
+                ...args.input
             }
             phots.push(newPhoto) //本来はここでDBに入れる
 
