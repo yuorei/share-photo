@@ -1,5 +1,6 @@
-const { ApolloServer } = require(`apollo-server-express`)
 const express = require('express')
+const expressPlayground = require(`graphql-playground-middleware-express`).default
+const { ApolloServer } = require(`apollo-server-express`)
 const { GraphQLScalarType } = require(`graphql`)
 
 // ここでスキーマの定義
@@ -154,17 +155,22 @@ const resolvers = {
     })
 }
 
-// express()を呼び出し Express アプリケーションを作成する
-var app = express()
+async function startServer() {
+    // express()を呼び出し Express アプリケーションを作成する
+    var app = express()
+    const server = new ApolloServer({
+        typeDefs,
+        resolvers
+    })
+    await server.start();
+    // applyMiddleware()を呼び出しExpressにミドルウェアを追加する
+    server.applyMiddleware({ app });
+    // ホームルートを作成
+    app.get(`/`, (req, res) => res.end(`Welcome to the PhotoShare API`))
 
-const server = new ApolloServer({ typeDefs, resolvers })
-
-// applyMiddleware()を呼び出しExpressにミドルウェアを追加する
-server.applyMiddleware({ app })
-
-// ホームルートを作成
-app.get(`/`,(req,res)=>res.end(`Welcome to the PhotoShare API`))
-
-app.listen({port: 4000},() =>
-    console.log(`GraphQL Sevice running @ http://localhost:4000 ${server.graphqlPath}`)
-)
+    app.get(`/playground`, expressPlayground({ endpoint: `/graphql` }))
+    app.listen({ port: 4000 }, () =>
+        console.log(`GraphQL Server running at http://localhost:4000${server.graphqlPath}`)
+    )
+}
+startServer();
