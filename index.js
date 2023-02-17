@@ -1,9 +1,12 @@
 
 //const express = require('express')
 const { ApolloServer } = require(`apollo-server`)
+const {GraphQLScalarType}=require(`graphql`)
 
 // ここでスキーマの定義
 const typeDefs = `
+    scalar DateTime
+
     enum PhotoCategory {
         SELFIE
         PORTRAIT
@@ -28,6 +31,7 @@ const typeDefs = `
         category: PhotoCategory!
         postedBy: User!
         taggedUsers: [User!]!
+        created: DateTime!
     }
 
     input PostPhotoInput {
@@ -38,7 +42,7 @@ const typeDefs = `
 
     type Query {
         totalPhotos: Int!
-        allPhotos: [Photo!]!
+        allPhotos(after: DateTime): [Photo!]!
     }
 
     type Mutation {
@@ -57,20 +61,23 @@ var photos = [
         "name": "すごい車",
         "description": "はやい",
         "category": "ACTION",
-        "githubUser": "yuorei"
+        "githubUser": "yuorei",
+        "created": "3-28-1977"
     },
     {
         "id": "2",
         "name": "すごい家",
         "category": "SELFIE",
-        "githubUser": "sSchmidt"
+        "githubUser": "sSchmidt",
+        "created": "2-19-2023"
     },
     {
         "id": "3",
         "name": "すごい子",
         "description": "えらい",
         "category": "LANDSCAPE",
-        "githubUser": "yuorei"
+        "githubUser": "yuorei",
+        "created": "2024-09-23T17:09:44.308Z"
     },
 ]
 
@@ -80,12 +87,14 @@ var tags = [
     {"photoID": "2","userID": "sSchmidt"}
 ]
 
-
 // リゾルバは特定のフィールドのデータを返す関数
 const resolvers = {
     Query: {
         totalPhotos: () => photos.length,
-        allPhotos: () => photos
+        allPhotos: (parent,args) =>{
+            args.after // javaScriptのDateオブジェクト
+            return photos
+        }
     },
 
     Mutation: {
@@ -95,7 +104,8 @@ const resolvers = {
             // 新しい写真を作成し、idを生成する
             var newPhoto = {
                 id: _id++,
-                ...args.input
+                ...args.input,
+                created: new Date()
             }
             photos.push(newPhoto) //本来はここでDBに入れる
 
@@ -134,7 +144,15 @@ const resolvers = {
 
             // 写真IDの配列を写真オブジェクトの配列に変換する
             .map(photoID => photos.find(p => p.id === photoID))
-    }
+    },
+
+    DateTime: new GraphQLScalarType({
+        name: `DateTime`,
+        description: `A valid date time value.`,
+        parseValue: value => new Date(value),
+        serialize: value => new Date(value).toISOString(),
+        parseLiteral: ast => ast.value
+    })
 }
 const server = new ApolloServer({
     typeDefs,
