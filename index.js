@@ -11,22 +11,34 @@ const typeDefs = `
         LANDSCAPE
         CRAPHIC
     }
+
+    type User {
+        githubLogin: ID!
+        name: String!
+        avatar: String
+        postedPhotos: [Photo!]!
+    }
+
     type Photo {
         id: ID!
         url: String!
         name: String!
         description: String
         category: PhotoCategory!
+        postedBy: User!
     }
+
     input PostPhotoInput {
         name: String!
         category: PhotoCategory=PORTRAIT
         description: String
     }
+
     type Query {
         totalPhotos: Int!
         allPhotos: [Photo!]!
     }
+
     type Mutation {
         postPhoto(input: PostPhotoInput!):Photo!
     }
@@ -59,7 +71,15 @@ const resolvers = {
     },
     Photo: {
         // urlの生成
-        url: parent => `http://自分のサイト/img/${parent.id}.jpg`
+        url: parent => `http://自分のサイト/img/${parent.id}.jpg`,
+        postedBy: parent => {
+            return users.find(u => u.githubLogin === parent.githubLogin)
+        }
+    },
+    User: {
+        postedPhotos: parent => {
+            return phots.filter(p => p.githubUser === parent.githubLogin)
+        }
     }
 }
 const server = new ApolloServer({
