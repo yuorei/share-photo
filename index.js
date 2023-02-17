@@ -1,7 +1,6 @@
-
-//const express = require('express')
-const { ApolloServer } = require(`apollo-server`)
-const {GraphQLScalarType}=require(`graphql`)
+const { ApolloServer } = require(`apollo-server-express`)
+const express = require('express')
+const { GraphQLScalarType } = require(`graphql`)
 
 // ここでスキーマの定義
 const typeDefs = `
@@ -82,16 +81,16 @@ var photos = [
 ]
 
 var tags = [
-    {"photoID": "1","userID": "yuorei"},
-    {"photoID": "2","userID": "yuorei"},
-    {"photoID": "2","userID": "sSchmidt"}
+    { "photoID": "1", "userID": "yuorei" },
+    { "photoID": "2", "userID": "yuorei" },
+    { "photoID": "2", "userID": "sSchmidt" }
 ]
 
 // リゾルバは特定のフィールドのデータを返す関数
 const resolvers = {
     Query: {
         totalPhotos: () => photos.length,
-        allPhotos: (parent,args) =>{
+        allPhotos: (parent, args) => {
             args.after // javaScriptのDateオブジェクト
             return photos
         }
@@ -154,11 +153,18 @@ const resolvers = {
         parseLiteral: ast => ast.value
     })
 }
-const server = new ApolloServer({
-    typeDefs,
-    resolvers
-})
 
-server
-    .listen()
-    .then(({ url }) => console.log(`GraphQL Sevice running on ${url}`))
+// express()を呼び出し Express アプリケーションを作成する
+var app = express()
+
+const server = new ApolloServer({ typeDefs, resolvers })
+
+// applyMiddleware()を呼び出しExpressにミドルウェアを追加する
+server.applyMiddleware({ app })
+
+// ホームルートを作成
+app.get(`/`,(req,res)=>res.end(`Welcome to the PhotoShare API`))
+
+app.listen({port: 4000},() =>
+    console.log(`GraphQL Sevice running @ http://localhost:4000 ${server.graphqlPath}`)
+)
