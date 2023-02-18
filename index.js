@@ -2,53 +2,12 @@ const express = require('express')
 const expressPlayground = require(`graphql-playground-middleware-express`).default
 const { ApolloServer } = require(`apollo-server-express`)
 const { GraphQLScalarType } = require(`graphql`)
+const { readFileSync } = require(`fs`)
+const { MongoClient } = require(`mongodb`)
+const { consumers } = require('stream')
+require('dotenv').config()
+var typeDefs = readFileSync('./typeDefs.graphql', 'UTF-8')
 
-// ここでスキーマの定義
-const typeDefs = `
-    scalar DateTime
-
-    enum PhotoCategory {
-        SELFIE
-        PORTRAIT
-        ACION
-        LANDSCAPE
-        CRAPHIC
-    }
-
-    type User {
-        githubLogin: ID!
-        name: String!
-        avatar: String
-        postedPhotos: [Photo!]!
-        inPhotos: [Photo!]!
-    }
-
-    type Photo {
-        id: ID!
-        url: String!
-        name: String!
-        description: String
-        category: PhotoCategory!
-        postedBy: User!
-        taggedUsers: [User!]!
-        created: DateTime!
-    }
-
-    input PostPhotoInput {
-        name: String!
-        category: PhotoCategory=PORTRAIT
-        description: String
-    }
-
-    type Query {
-        totalPhotos: Int!
-        allPhotos(after: DateTime): [Photo!]!
-    }
-
-    type Mutation {
-        postPhoto(input: PostPhotoInput!):Photo!
-    }
-`
 var _id = 0
 var users = [
     { "githubLogin": "yuorei", "name": "ユオレイ" },
@@ -90,11 +49,26 @@ var tags = [
 // リゾルバは特定のフィールドのデータを返す関数
 const resolvers = {
     Query: {
-        totalPhotos: () => photos.length,
-        allPhotos: (parent, args) => {
-            args.after // javaScriptのDateオブジェクト
-            return photos
-        }
+        totalPhotos: (parent, args, { db }) =>
+            // MongoDBコレクションにアクセスする方法
+            db.collection(`photos`)
+                // コレクション内のドキュメントをカウントする
+                .estimatedDocumentCount(),
+
+        allPhotos: (parent, args, { db }) =>
+            db.collection(`photos`)
+                // コレクション内のすべててのドキュメントを配列に変換
+                .find()
+                .toArrey(),
+
+        totalUsers: (parent, args, { db }) =>
+            db.collection(`users`)
+                .estimatedDocumentCount(),
+
+        allUsers: (parent, args, { db }) =>
+            db.collection(`users`)
+                .find()
+                .toArrey()
     },
 
     Mutation: {
@@ -155,9 +129,14 @@ const resolvers = {
     })
 }
 
+
 async function startServer() {
     // express()を呼び出し Express アプリケーションを作成する
-    var app = express()
+    const app = express()
+    const MONGO_DB = process.env.DB_HOST
+    const client = await MongoClient.connect(MONGO_DB, { useNewUrlParser: true })
+    const db = client.db()
+    const context = { db }
     const server = new ApolloServer({
         typeDefs,
         resolvers
